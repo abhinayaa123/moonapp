@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Phase Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better aesthetics and font */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Dark blue-gray background */
+            color: #e2e8f0; /* Light text color */
+            overflow-x: hidden; /* Prevent horizontal scroll due to animations */
+        }
+        .moon-icon {
+            font-size: 3rem; /* Larger moon icons */
+            line-height: 1;
+        }
+        .moon-card {
+            background-color: #1e293b; /* Darker card background */
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease-in-out, opacity 0.3s ease-out; /* Added opacity for fade-in */
+            cursor: pointer; /* Indicate clickable cards */
+        }
+        .moon-card:hover {
+            transform: translateY(-5px) scale(1.02); /* Slight scale on hover */
+        }
+        .button-glow {
+            box-shadow: 0 0 15px rgba(129, 140, 248, 0.7);
+        }
+
+        /* Animation for cards sliding in */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Apply animation to cards */
+        .moon-card.animated {
+            animation: slideInUp 0.5s ease-out forwards;
+        }
+
+        /* Keyframes for button pulse effect */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.7);
+            }
+            70% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 15px rgba(129, 140, 248, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(129, 140, 248, 0);
+            }
+        }
+
+        /* Apply pulse animation to button */
+        .button-pulse {
+            animation: pulse 1s infinite;
+        }
+
+        /* Styles for the detail modal */
+        .moon-detail-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Dark semi-transparent overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+        }
+
+        .moon-detail-modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .moon-detail-modal-content {
+            background-color: #1e293b;
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            text-align: center;
+            position: relative;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px); /* Initial state for animation */
+            opacity: 0;
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+
+        .moon-detail-modal-overlay.active .moon-detail-modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .moon-detail-close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: #94a3b8; /* Light gray for close button */
+            cursor: pointer;
+            transition: color 0.2s ease-in-out;
+        }
+
+        .moon-detail-close-btn:hover {
+            color: #e2e8f0;
+        }
+
+        .detail-moon-icon {
+            font-size: 6rem; /* Much larger icon for detail view */
+            line-height: 1;
+            margin-bottom: 1rem;
+        }
+        .detail-phase-name {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+        .detail-date {
+            font-size: 1.2rem;
+            color: #cbd5e1;
+            margin-bottom: 1rem;
+        }
+        .detail-illumination {
+            font-size: 1.5rem;
+            color: #a78bfa; /* Purple for illumination */
+            font-weight: 600;
+        }
+
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="max-w-4xl w-full text-center">
+        <h1 class="text-5xl font-extrabold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 rounded-lg p-2">
+            🌙 Moon Phase Tracker
+        </h1>
+
+        <!-- Today's Moon Phase Section -->
+        <div class="moon-card p-6 mb-8 flex flex-col items-center">
+            <h2 class="text-3xl font-semibold mb-4 text-white">Today's Moon Phase</h2>
+            <div id="todayMoon" class="flex flex-col items-center">
+                <!-- Today's moon phase will be loaded here -->
+                <div class="moon-icon text-gray-300">Calculating...</div>
+                <p class="text-lg mt-2 text-gray-400"></p>
+                <p class="text-xl font-medium mt-1 text-white"></p>
+            </div>
+        </div>
+
+        <!-- Next 7 Days Button -->
+        <button id="next7DaysBtn" class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105 mb-10 button-glow">
+            Next 7 Days
+        </button>
+
+        <!-- Next 7 Days Moon Phases Section -->
+        <div id="next7DaysPhases" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" style="display: none;">
+            <!-- Next 7 days moon phases will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Moon Detail Modal -->
+    <div id="moonDetailModal" class="moon-detail-modal-overlay">
+        <div class="moon-detail-modal-content">
+            <button id="moonDetailCloseBtn" class="moon-detail-close-btn">&times;</button>
+            <div class="detail-moon-icon text-white" id="detailMoonIcon"></div>
+            <p class="detail-phase-name" id="detailPhaseName"></p>
+            <p class="detail-date" id="detailDate"></p>
+            <p class="detail-illumination" id="detailIllumination"></p>
+        </div>
+    </div>
+
+    <script>
+        // Function to calculate moon phase
+        // Based on a simplified algorithm for approximate moon phases
+        // Reference: Meeus, Jean. Astronomical Algorithms. 2nd ed. Richmond, VA: Willmann-Bell, 1998.
+        function calculateMoonPhase(date) {
+            let year = date.getFullYear(); // Use let to allow modification
+            let month = date.getMonth() + 1; // getMonth() is 0-indexed
+            const day = date.getDate();
+
+            let c = 0;
+            let e = 0;
+            let jd; // Julian Date
+
+            if (month <= 2) {
+                year -= 1;
+                month += 12;
+            }
+
+            c = Math.floor(year / 100);
+            e = 2 - c + Math.floor(c / 4);
+
+            jd = Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + e - 1524.5;
+
+            // Current Julian Date for known New Moon (January 6, 2000)
+            const JDN_2000_01_06_NEW_MOON = 2451550.1;
+
+            const daysSinceNewMoon = jd - JDN_2000_01_06_NEW_MOON;
+            const lunarCycle = 29.53058867; // Synodic month
+
+            const phase = daysSinceNewMoon % lunarCycle;
+            let illumination = (phase / lunarCycle); // 0 to 1
+
+            // Ensure illumination is always positive (for cases where phase could be negative after modulo)
+            if (illumination < 0) {
+                illumination += 1;
+            }
+
+            let phaseName = "";
+            let phaseIcon = "";
+
+            // Adjusting illumination thresholds for more distinct phases
+            if (illumination < 0.01) { // Very close to new moon
+                phaseName = "New Moon";
+                phaseIcon = "🌑";
+            } else if (illumination < 0.24) {
+                phaseName = "Waxing Crescent";
+                phaseIcon = "🌒";
+            } else if (illumination < 0.26) { // Around first quarter
+                phaseName = "First Quarter";
+                phaseIcon = "🌓";
+            } else if (illumination < 0.49) {
+                phaseName = "Waxing Gibbous";
+                phaseIcon = "🌔";
+            } else if (illumination < 0.51) { // Around full moon
+                phaseName = "Full Moon";
+                phaseIcon = "🌕";
+            } else if (illumination < 0.74) {
+                phaseName = "Waning Gibbous";
+                phaseIcon = "🌖";
+            } else if (illumination < 0.76) { // Around last quarter
+                phaseName = "Last Quarter";
+                phaseIcon = "🌗";
+            } else {
+                phaseName = "Waning Crescent";
+                phaseIcon = "🌘";
+            }
+
+            return { phaseName, phaseIcon, illumination: Math.round(illumination * 100) };
+        }
+
+        // Function to format date
+        function formatDate(date) {
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        // Function to display moon phase for a given date
+        function displayMoonPhase(containerId, date, isToday = false, delay = 0) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const { phaseName, phaseIcon, illumination } = calculateMoonPhase(date);
+            const formattedDate = formatDate(date);
+
+            let htmlContent = `
+                <div class="moon-icon text-white">${phaseIcon}</div>
+                <p class="text-lg mt-2 text-gray-400">${formattedDate}</p>
+                <p class="text-xl font-medium mt-1 text-white">${phaseName} (${illumination}%)</p>
+            `;
+
+            if (isToday) {
+                container.innerHTML = htmlContent;
+            } else {
+                // For next 7 days, create a card with animation
+                const card = document.createElement('div');
+                card.className = 'moon-card p-4 flex flex-col items-center';
+                card.innerHTML = htmlContent;
+                // Store the date as a data attribute for easy retrieval on click
+                card.setAttribute('data-date', date.toISOString()); // Store ISO string for precise date
+
+                // Add animated class after a delay for staggered effect
+                setTimeout(() => {
+                    card.classList.add('animated');
+                }, delay);
+                container.appendChild(card);
+            }
+        }
+
+        // Function to show moon detail in the modal
+        function showMoonDetail(dateString) {
+            const date = new Date(dateString);
+            const { phaseName, phaseIcon, illumination } = calculateMoonPhase(date);
+            const formattedDate = formatDate(date);
+
+            document.getElementById('detailMoonIcon').textContent = phaseIcon;
+            document.getElementById('detailPhaseName').textContent = phaseName;
+            document.getElementById('detailDate').textContent = formattedDate;
+            document.getElementById('detailIllumination').textContent = `Illumination: ${illumination}%`;
+
+            document.getElementById('moonDetailModal').classList.add('active');
+        }
+
+        // Function to hide moon detail modal
+        function hideMoonDetail() {
+            document.getElementById('moonDetailModal').classList.remove('active');
+        }
+
+
+        // Initialize Today's Moon Phase and set up event listeners
+        window.onload = function() {
+            const today = new Date();
+            displayMoonPhase('todayMoon', today, true);
+
+            const next7DaysBtn = document.getElementById('next7DaysBtn');
+            const next7DaysPhases = document.getElementById('next7DaysPhases');
+            const moonDetailModal = document.getElementById('moonDetailModal');
+            const moonDetailCloseBtn = document.getElementById('moonDetailCloseBtn');
+
+
+            next7DaysBtn.addEventListener('click', () => {
+                // Add and remove pulse animation class
+                next7DaysBtn.classList.remove('button-pulse'); // Remove to allow re-triggering
+                void next7DaysBtn.offsetWidth; // Trigger reflow
+                next7DaysBtn.classList.add('button-pulse');
+
+                if (next7DaysPhases.style.display === 'none') {
+                    next7DaysPhases.innerHTML = ''; // Clear previous results
+                    next7DaysPhases.style.display = 'grid'; // Show the grid container immediately
+
+                    for (let i = 1; i <= 7; i++) {
+                        const nextDate = new Date();
+                        nextDate.setDate(today.getDate() + i);
+                        // Stagger the animation of each card
+                        displayMoonPhase('next7DaysPhases', nextDate, false, i * 100);
+                    }
+                    next7DaysBtn.textContent = 'Hide Next 7 Days';
+                } else {
+                    // To hide, first fade out cards (optional, for now just hide)
+                    next7DaysPhases.style.display = 'none';
+                    next7DaysBtn.textContent = 'Next 7 Days';
+                    // Remove animated class from hidden cards to reset for next display
+                    Array.from(next7DaysPhases.children).forEach(card => card.classList.remove('animated'));
+                }
+            });
+
+            // Event delegation for clicking on moon cards in the "Next 7 Days" section
+            next7DaysPhases.addEventListener('click', (event) => {
+                const clickedCard = event.target.closest('.moon-card');
+                if (clickedCard) {
+                    const dateString = clickedCard.getAttribute('data-date');
+                    if (dateString) {
+                        showMoonDetail(dateString);
+                    }
+                }
+            });
+
+            // Close modal when close button is clicked
+            moonDetailCloseBtn.addEventListener('click', hideMoonDetail);
+
+            // Close modal when clicking outside the content area
+            moonDetailModal.addEventListener('click', (event) => {
+                if (event.target === moonDetailModal) {
+                    hideMoonDetail();
+                }
+            });
+        };
+    </script>
+</body>
+</html>
